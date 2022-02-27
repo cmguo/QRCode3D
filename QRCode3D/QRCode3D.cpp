@@ -17,12 +17,15 @@ using namespace ZXing;
 
 static void PrintUsage(const char* exePath)
 {
-	std::cout << "Usage: " << exePath << " [-blockSize <blockSize>] [-padding <padding>] [-encoding <encoding>] [-format <format>] [-ecc <level>] <text> <output>\n"
-		<< "    -blockSize Block Size of generated model\n"
-		<< "    -height	   Height of generated model\n"
-		<< "    -padding   Padding around barcode\n"
+	std::cout << "Usage: " << exePath << " [-blockSize <blockSize>] [-thickness <thickness>] [-padding <padding>] [-concave] [-convex] [-encoding <encoding>] [-format <format>] [-ecc <level>] <text> <output>\n"
+		<< "    -blockSize Block Size of generated model, default 2.0\n"
+		<< "    -thickness Thickness of generated model, default 4.0\n"
+		<< "    -padding   Padding around barcode, default 1\n"
+		<< "    -format    Barcode format, default QRCode\n"
 		<< "    -encoding  Encoding used to encode input text\n"
 		<< "    -ecc       Error correction level, [0-8]\n"
+		<< "    -concave   Barcode is concave, default\n"
+		<< "    -convex    Barcode is convex\n"
 		<< "\n"
 		<< "Supported formats are:\n";
 	for (auto f : BarcodeFormats::all()) {
@@ -32,19 +35,19 @@ static void PrintUsage(const char* exePath)
 	std::cout << "Format can be lowercase letters, with or without '-'.\n";
 }
 
-static bool ParseSize(std::string str, int* width, int* height)
+static bool ParseSize(std::string str, int* width, int* thickness)
 {
 	std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
 	auto xPos = str.find('x');
 	if (xPos != std::string::npos) {
 		*width = std::stoi(str.substr(0, xPos));
-		*height = std::stoi(str.substr(xPos + 1));
+		*thickness = std::stoi(str.substr(xPos + 1));
 		return true;
 	}
 	return false;
 }
 
-static bool ParseOptions(int argc, char* argv[], double & blockSize, size_t& padding, double& height, CharacterSet& encoding,
+static bool ParseOptions(int argc, char* argv[], double & blockSize, size_t& padding, double& thickness, bool & concave, CharacterSet& encoding,
 	int& eccLevel, BarcodeFormat& format, std::map<std::string, int> & configs, std::string& text, std::string& filePath)
 {
 	int nonOptArgCount = 0;
@@ -59,10 +62,16 @@ static bool ParseOptions(int argc, char* argv[], double & blockSize, size_t& pad
 				return false;
 			padding = std::stoi(argv[i]);
 		}
-		else if (strcmp(argv[i], "-height") == 0) {
+		else if (strcmp(argv[i], "-thickness") == 0) {
 			if (++i == argc)
 				return false;
-			height = std::stod(argv[i]);
+			thickness = std::stod(argv[i]);
+		}
+		else if (strcmp(argv[i], "-concave") == 0) {
+			concave = true;
+		}
+		else if (strcmp(argv[i], "-convex") == 0) {
+			concave = false;
 		}
 		else if (strcmp(argv[i], "-ecc") == 0) {
 			if (++i == argc)
@@ -140,7 +149,8 @@ int main(int argc, char * argv[])
 {
 	size_t padding = 1;
 	double blockSize = 2.0;
-	double height = 4.0;
+	double thickness = 4.0;
+	bool concave = true;
 
 	int eccLevel = -1;
 	std::string text, filePath;
@@ -148,7 +158,7 @@ int main(int argc, char * argv[])
 	BarcodeFormat format = BarcodeFormat::QRCode;
 	std::map<std::string, int> configs;
 
-	if (!ParseOptions(argc, argv, blockSize, padding, height, encoding, eccLevel, format, configs, text, filePath)) {
+	if (!ParseOptions(argc, argv, blockSize, padding, thickness, concave, encoding, eccLevel, format, configs, text, filePath)) {
 		PrintUsage(argv[0]);
 		return -1;
 	}
@@ -167,7 +177,7 @@ int main(int argc, char * argv[])
 	PrintCode(bytes);
 
 	QRCodeModel m("test");
-    m.generate(bytes, padding, blockSize, height);
+    m.generate(bytes, padding, blockSize, thickness, concave);
 
     std::ofstream ofs(filePath);
     m.writeToStl(ofs);

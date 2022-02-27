@@ -8,7 +8,7 @@ public:
 	QRCodeModel(std::string const& name);
 		
 public:
-	void generate(std::vector<std::vector<unsigned char>> const& bytes, size_t padding, double blockSize, double height);
+	void generate(std::vector<std::vector<unsigned char>> const& bytes, size_t padding, double blockSize, double thickness, bool concave);
 
 private:
 	void prepareBlocks(std::vector<std::vector<unsigned char>> const& bytes);
@@ -52,7 +52,8 @@ private:
 	double blockSize = 0;
 	double radiusX = 0;
 	double radiusY = 0;
-	double height = 0;
+	double thickness = 0;
+	bool concave = false;
 
 private:
 	TriangleMesh mesh;

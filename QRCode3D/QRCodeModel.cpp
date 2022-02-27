@@ -5,7 +5,7 @@ QRCodeModel::QRCodeModel(std::string const& name)
 {
 }
 
-void QRCodeModel::generate(std::vector<std::vector<unsigned char>> const& bytes, size_t padding, double blockSize, double height)
+void QRCodeModel::generate(std::vector<std::vector<unsigned char>> const& bytes, size_t padding, double blockSize, double thickness, bool concave)
 {
     this->padding = padding;
     this->blockSize = blockSize;
@@ -13,14 +13,15 @@ void QRCodeModel::generate(std::vector<std::vector<unsigned char>> const& bytes,
     size_t widthY = bytes.size() + padding * 2;
     this->radiusX = widthX * blockSize / 2;
     this->radiusY = widthY * blockSize / 2;
-    this->height = height;
+    this->thickness = thickness;
+    this->concave = concave;
     prepareBlocks(bytes);
     generateBorder();
     generateBackFace();
     generateFrontFace();
 }
 
-// bytes: non-zero for black
+// bytes: non-thickness for black
 void QRCodeModel::prepareBlocks(std::vector<std::vector<unsigned char>> const& bytes)
 {
     //std::vector<std::vector<unsigned char>> bytes = {
@@ -78,12 +79,6 @@ void QRCodeModel::prepareBlocks(std::vector<std::vector<unsigned char>> const& b
         for (size_t c = 0; c < nx; ++c)
             line[c + padding].group = row[c] ? 1 : 0;
     }
-    nx += padding * 2 - 1;
-    ny += padding * 2 - 1;
-    blocks[0][0].points[4] = 4;
-    blocks[0][nx].points[5] = 5;
-    blocks[ny][0].points[6] = 6;
-    blocks[ny][nx].points[7] = 7;
 }
 
 void QRCodeModel::groupBlocks()
@@ -136,15 +131,18 @@ void QRCodeModel::groupBlocks()
 
 void QRCodeModel::generateBorder()
 {
+    double const x = radiusX;
+    double const y = radiusY;
+    double const z = concave ? thickness : thickness / 2;
     mesh.addVerticals({
-        {-radiusX, -radiusY, 0}, // 0
-        {radiusX, -radiusY, 0}, // 1
-        {radiusX, radiusY, 0}, // 2
-        {-radiusX, radiusY, 0}, // 3
-        {-radiusX, -radiusY, height}, // 4
-        {radiusX, -radiusY, height},// 5
-        {radiusX, radiusY, height}, // 6
-        {-radiusX, radiusY, height} // 7
+        {-x, -y, 0}, // 0
+        {x, -y, 0}, // 1
+        {x, y, 0}, // 2
+        {-x, y, 0}, // 3
+        {-x, -y, z}, // 4
+        {x, -y, z},// 5
+        {x, y, z}, // 6
+        {-x, y, z} // 7
         });
 
     mesh.addTriangles({
@@ -157,6 +155,13 @@ void QRCodeModel::generateBorder()
         {0, 7, 3},
         {0, 4, 7},
         });
+    size_t nx = blocks.front().size() - 1;
+    size_t ny = blocks.size() - 1;
+    blocks[0][0].points[4] = 4;
+    blocks[0][nx].points[5] = 5;
+    blocks[ny][0].points[6] = 6;
+    blocks[ny][nx].points[7] = 7;
+
 }
 
 void QRCodeModel::generateBackFace()
@@ -201,7 +206,7 @@ size_t QRCodeModel::blockPoint(size_t row, size_t col, size_t index)
         else if (n == 3 && (col > 0 || !++row))
             p = blockPoint(row, col - 1, index - 1);
         else if (n != 2 || (++row && ++col))
-            p = mesh.addVerticals({ { col * blockSize - radiusX, row * blockSize - radiusY, index >= 4 ? height : height / 2 } });
+            p = mesh.addVerticals({ { col * blockSize - radiusX, row * blockSize - radiusY, (index >= 4) == concave ? thickness : thickness / 2 } });
     }
     return p;
 }
